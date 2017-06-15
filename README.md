@@ -1,11 +1,12 @@
-# notify slack app daemon  
+# Slack notify app daemon  
 :rocket:
 
 ### What is it for?  
 It is daemon for notification to slack users about errors, which has contained on elastic search server.
 
 
-### how can you run this app?
+### How can you run this app?  
+There are only two steps:  
 - you should have python with version 3 on your computer
 - execute below command:
 
