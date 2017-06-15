@@ -16,6 +16,57 @@ __version__ = '1.0'
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
 
+RECIPIENTS = {
+    # RU Call
+    'ivr-srv': None,
+    # RU Operator
+    'operator-gtw': None,
+    'operator-srv': None,
+    # RU Order Process
+    'orderproc-srv': None,
+    # Notifications
+    'notify-srv': None,
+    'push-gtw': None,
+    'call-gtw': None,
+    'public-api': None,
+    # Driver Tracking
+    'tracking-srv': '@konovalov_artem',
+    # Payment
+    'billing-srv': None,
+    'rider-srv': None,
+    # Driver guarantee
+    'guarantee-srv': None,
+    # Driver experience
+    'driver-srv': None,
+    'driver-gtw': None,
+    # Promotion
+    'promo-srv': '@konovalov_artem',
+    # Tolls
+    'geo-srv': '@konovalov_artem',
+    # Order Process
+    'order-srv': '@konovalov_artem',
+    'tick-srv': '@konovalov_artem',
+    'tariff-srv': '@konovalov_artem',
+    # Backoffice
+    'manager-srv': None,
+    'manager-gtw': None,
+    # Driver Shift
+    'shift-srv': '@konovalov_artem',
+    'priority-srv': '@konovalov_artem',
+    # Statistics
+    'stat-srv': None,
+    # Heatmap
+    'predict-srv': None,
+    'heatmap-srv': None,
+    'teller-srv': None,
+    # Geospatial
+    'polygon-srv': None,
+    'hexagon-srv': None,
+    # Rider Experience
+    'customer-srv': None,
+    'customer-gtw': None,
+}
+
 
 class SlackSender:
     _bot_token = None
@@ -49,10 +100,10 @@ class SlackSender:
         urlopen(request).read().decode()
 
     def send_info(self, text):
-        self._send_msg("Hi", text, "", 'good')
+        self._send_msg("Hi", text, ":rocket:", 'good')
 
     def send_error(self, text):
-        self._send_msg("Error:", text, "There is something wrong with me", 'danger')
+        self._send_msg("Error:", text, "There is something wrong with me :warning:", 'danger')
 
     def send_data(self, items):
         if len(items) == 0:
@@ -64,8 +115,11 @@ class SlackSender:
             print(app_name)
             for log in logs:
                 url = 'https://slack.com/api/files.upload'
+                recipient = RECIPIENTS.get(app_name.lower())
+                recipient = self._channel_name if recipient is None else recipient
+
                 request_params = {
-                    'channels': self._channel_name,
+                    'channels': recipient,
                     'token': self._bot_token,
                     'filetype': 'java',
                     'title': "{}-{}".format(log.application, log.severity),
@@ -213,8 +267,8 @@ class ElasticSearchLoader:
 
 
 class Watcher:
-    sender = None
-    loader = None
+    _sender = None
+    _loader = None
 
     def __init__(self, consumer, producer):
         self.loader = producer
@@ -228,12 +282,12 @@ class Watcher:
             try:
                 logs = self.loader.load()
             except Exception as e:
-                sender.send_error('error while loading logs from elastic search:{}'.format(e))
+                _sender.send_error('error while loading logs from elastic search:{}'.format(e))
 
             try:
-                sender.send_data(logs)
+                _sender.send_data(logs)
             except Exception as e:
-                sender.send_error('error while sending notifies about errors: {}'.format(e))
+                _sender.send_error('error while sending notifies about errors: {}'.format(e))
 
             time.sleep(120)
 
@@ -246,11 +300,11 @@ if __name__ == '__main__':
     parser.add_argument('--slack-bot-token', required=True, help='access token to slack for bot')
 
     args = parser.parse_args()
-    sender = SlackSender(args.slack_bot_token,
-                         args.slack_channel_web_hook_url,
-                         args.slack_channel)
+    _sender = SlackSender(args.slack_bot_token,
+                          args.slack_channel_web_hook_url,
+                          args.slack_channel)
 
-    loader = ElasticSearchLoader(args.elastic_search_domain)
+    _loader = ElasticSearchLoader(args.elastic_search_domain)
 
-    watcher = Watcher(sender, loader)
+    watcher = Watcher(_sender, _loader)
     watcher.watcher()
