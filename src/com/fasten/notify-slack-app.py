@@ -227,7 +227,7 @@ class ElasticSearchLoader:
 
         url = self._server_url + 'logs-*/_search'
         request = urllib.request.Request(url, 'GET', headers)
-        response = urllib.request.urlopen(request, request_body, timeout=1000).read().decode('utf-8')
+        response = urllib.request.urlopen(request, request_body, timeout=10000).read().decode('utf-8')
         return json.loads(response)['hits']['hits']
 
     @staticmethod
