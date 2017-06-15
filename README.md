@@ -1,4 +1,5 @@
-# notify slack app daemon
+# notify slack app daemon  
+:rocket:
 
 ### What is it for?  
 It is daemon for notification to slack users about errors, which has contained on elastic search server.
