@@ -196,7 +196,7 @@ class ElasticSearchLoader:
         self._last_update_time = datetime.datetime.today()
         self._server_url = server_url
 
-    def _load_json(self, update_time, limit=100):
+    def _load_json(self, limit=100):
         body = {
             "query": {
                 "bool": {
@@ -206,7 +206,7 @@ class ElasticSearchLoader:
                     "must": {
                         "range": {
                             "@timestamp": {
-                                "gte": update_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                "gt": self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
                                 "format": "yyyy-MM-dd HH:mm:ss"
                             }
                         }
@@ -252,9 +252,8 @@ class ElasticSearchLoader:
     def load(self):
         result = {}
 
-        update_date = self._last_update_time
         while True:
-            data = self._load_json(update_date)
+            data = self._load_json()
             if len(data) == 0:
                 break
 
@@ -262,14 +261,10 @@ class ElasticSearchLoader:
             for log in logs:
                 result.setdefault(log.application, [])
                 result.get(log.application).append(log)
-                update_date = max(log.date, update_date)
+                self._last_update_time = max(log.date, self._last_update_time)
 
             for log_list in result.values():
                 Log.remove_duplicates(log_list)
-
-            update_date += datetime.timedelta(seconds=1)
-
-        self._last_update_time = max(self._last_update_time, update_date)
 
         return result
 
