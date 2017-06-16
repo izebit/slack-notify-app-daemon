@@ -156,23 +156,9 @@ class Log:
         return dt + datetime.timedelta(microseconds=us)
 
     @staticmethod
-    def remove_duplicates(items):
-        tmp_set = set(items)
-        for i in range(0, len(items)):
-            for j in range(i + 1, len(items)):
-
-                count = Log._get_max_common_substring_len(items[i].message, items[j].message)
-                if count > DUPLICATE_THRESHOLD:
-                    if items[j] in tmp_set:
-                        tmp_set.remove(items[j])
-
-        items.clear()
-        items.extend(tmp_set)
-
-    @staticmethod
-    def _get_max_common_substring_len(s1, s2):
+    def _is_duplicate(s1, s2, threshold):
         if s1 is None or s2 is None:
-            return 0
+            return False
 
         min_len = min(len(s1), len(s2))
         result = 0
@@ -180,11 +166,26 @@ class Log:
         for index in range(0, min_len):
             if s1[index] == s2[index]:
                 count += 1
+                if count >= threshold:
+                    return True
             else:
                 result = max(result, count)
                 count = 0
 
-        return max(result, count)
+        return max(result, count) > threshold
+
+    @staticmethod
+    def remove_duplicates(items):
+        tmp_set = set(items)
+        for i in range(0, len(items)):
+            for j in range(i + 1, len(items)):
+
+                if Log._is_duplicate(items[i].message, items[j].message, DUPLICATE_THRESHOLD):
+                    if items[j] in tmp_set:
+                        tmp_set.remove(items[j])
+
+        items.clear()
+        items.extend(tmp_set)
 
 
 class ElasticSearchLoader:
@@ -195,7 +196,7 @@ class ElasticSearchLoader:
         self._last_update_time = datetime.datetime.today()
         self._server_url = server_url
 
-    def _load_json(self, limit=10):
+    def _load_json(self, update_time, limit=100):
         body = {
             "query": {
                 "bool": {
@@ -205,7 +206,7 @@ class ElasticSearchLoader:
                     "must": {
                         "range": {
                             "@timestamp": {
-                                "gte": self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                "gte": update_time.strftime('%Y-%m-%d %H:%M:%S'),
                                 "format": "yyyy-MM-dd HH:mm:ss"
                             }
                         }
@@ -251,8 +252,9 @@ class ElasticSearchLoader:
     def load(self):
         result = {}
 
+        update_date = self._last_update_time
         while True:
-            data = self._load_json()
+            data = self._load_json(update_date)
             if len(data) == 0:
                 break
 
@@ -260,10 +262,14 @@ class ElasticSearchLoader:
             for log in logs:
                 result.setdefault(log.application, [])
                 result.get(log.application).append(log)
-                self._last_update_time = max(log.date, self._last_update_time)
+                update_date = max(log.date, update_date)
 
             for log_list in result.values():
                 Log.remove_duplicates(log_list)
+
+            if self._last_update_time < update_date:
+                self._last_update_time = update_date
+                break
 
         return result
 
