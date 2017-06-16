@@ -267,9 +267,9 @@ class ElasticSearchLoader:
             for log_list in result.values():
                 Log.remove_duplicates(log_list)
 
-            if self._last_update_time < update_date:
-                self._last_update_time = update_date
-                break
+            update_date += datetime.timedelta(seconds=1)
+
+        self._last_update_time = max(self._last_update_time, update_date)
 
         return result
 
