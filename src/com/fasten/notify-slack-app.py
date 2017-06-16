@@ -106,10 +106,10 @@ class SlackSender:
         self._send_msg("Error:", text, "There is something wrong with me :warning:", 'danger')
 
     def send_data(self, items):
+        print(">> sending data. size:{}".format(len(items)))
+
         if len(items) == 0:
             return
-
-        print(">> sending data")
 
         for app_name, logs in items.items():
             print(app_name)
@@ -205,8 +205,8 @@ class ElasticSearchLoader:
                     "must": {
                         "range": {
                             "@timestamp": {
-                                "gt": self._last_update_time.strftime('%d/%m/%Y'),
-                                "format": "dd/MM/yyyy"
+                                "gte": self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                "format": "yyyy-MM-dd HH:mm:ss"
                             }
                         }
                     }
@@ -226,8 +226,10 @@ class ElasticSearchLoader:
         }
 
         url = self._server_url + 'logs-*/_search'
+        print(">> url:{}".format(url))
         request = urllib.request.Request(url, 'GET', headers)
         response = urllib.request.urlopen(request, request_body, timeout=10000).read().decode('utf-8')
+        print("<< data:{}".format(str(response)))
         return json.loads(response)['hits']['hits']
 
     @staticmethod
@@ -271,23 +273,25 @@ class Watcher:
     _loader = None
 
     def __init__(self, consumer, producer):
-        self.loader = producer
-        self.sender = consumer
+        self._loader = producer
+        self._sender = consumer
 
     def watcher(self):
-        self.sender.send_info("i started work")
+        self._sender.send_info("i started work")
 
         while True:
             logs = {}
             try:
-                logs = self.loader.load()
+                logs = self._loader.load()
             except Exception as e:
-                _sender.send_error('error while loading logs from elastic search:{}'.format(e))
+                print('error while loading logs from elastic search:{}'.format(e))
+                self._sender.send_error('error while loading logs from elastic search:{}'.format(e))
 
             try:
-                _sender.send_data(logs)
+                self._sender.send_data(logs)
             except Exception as e:
-                _sender.send_error('error while sending notifies about errors: {}'.format(e))
+                print('error while sending notifies about errors: {}'.format(e))
+                self._sender.send_error('error while sending notifies about errors: {}'.format(e))
 
             time.sleep(120)
 
@@ -300,11 +304,11 @@ if __name__ == '__main__':
     parser.add_argument('--slack-bot-token', required=True, help='access token to slack for bot')
 
     args = parser.parse_args()
-    _sender = SlackSender(args.slack_bot_token,
-                          args.slack_channel_web_hook_url,
-                          args.slack_channel)
+    sender = SlackSender(args.slack_bot_token,
+                         args.slack_channel_web_hook_url,
+                         args.slack_channel)
 
-    _loader = ElasticSearchLoader(args.elastic_search_domain)
+    loader = ElasticSearchLoader(args.elastic_search_domain)
 
-    watcher = Watcher(_sender, _loader)
+    watcher = Watcher(sender, loader)
     watcher.watcher()
