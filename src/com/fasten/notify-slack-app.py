@@ -299,7 +299,7 @@ class Watcher:
                 print('error while sending notifies about errors: {}'.format(e))
                 self._sender.send_error('error while sending notifies about errors: {}'.format(e))
 
-            time.sleep(120)
+            time.sleep(600)
 
 
 if __name__ == '__main__':
