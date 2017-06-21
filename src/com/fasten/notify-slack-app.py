@@ -298,14 +298,14 @@ class Watcher:
             try:
                 logs = self._loader.load()
             except Exception as e:
-                print('error while loading logs from elastic search:{}'.format(e))
-                self._sender.send_error('error while loading logs from elastic search:{}'.format(e))
+                print('error happened while loading logs from elastic search: {}'.format(e))
+                self._sender.send_error('error happened while loading logs from elastic search:{}'.format(e))
 
             try:
                 self._sender.send_data(logs)
             except Exception as e:
-                print('error while sending notifies about errors: {}'.format(e))
-                self._sender.send_error('error while sending notifies about errors: {}'.format(e))
+                print('error happened while sending notifies about errors: {}'.format(e))
+                self._sender.send_error('error happened while sending notifies about errors: {}'.format(e))
 
             time.sleep(600)
 
