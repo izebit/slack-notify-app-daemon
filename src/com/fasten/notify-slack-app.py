@@ -13,6 +13,8 @@ from urllib.request import Request, urlopen
 __author__ = 'Artem Konovalov <a.konovalov@fasten.com>'
 __version__ = '1.0'
 
+STOP_WORDS = ["Can't authenticate by token"]
+
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
 
@@ -115,18 +117,19 @@ class SlackSender:
             print(app_name)
             for log in logs:
                 url = 'https://slack.com/api/files.upload'
-                recipient = RECIPIENTS.get(app_name.lower())
-                recipient = self._channel_name if recipient is None else recipient
+                recipient = RECIPIENTS.get(app_name.lower(), "anonymous")
 
                 request_params = {
-                    'channels': recipient,
+                    'channels': self._channel_name,
                     'token': self._bot_token,
                     'filetype': 'java',
                     'title': "{}-{}".format(log.application, log.severity),
                     'filename': '{}.log'.format(app_name),
                     'content': '{}\n{}'.format(log.message, log.stacktrace),
-                    'initial_comment': 'application: {} \n date: {}'.format(log.application,
-                                                                            log.date.strftime("%Y-%m-%d %H:%M"))
+                    'initial_comment': 'application: {} \nmember:{}\ndate: {}'.format(log.application,
+                                                                                      recipient,
+                                                                                      log.date.strftime(
+                                                                                          "%Y-%m-%d %H:%M"))
                 }
 
                 request = Request(url, urlencode(request_params).encode())
@@ -150,10 +153,9 @@ class Log:
 
     @staticmethod
     def _parse_timestamp(dt_str):
-        dt, _, us = dt_str.partition(".")
-        dt = datetime.datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
-        us = int(us.rstrip("Z"), 10)
-        return dt + datetime.timedelta(microseconds=us)
+        tokens = dt_str.split(".")
+        dt = datetime.datetime.strptime(tokens[0], "%Y-%m-%dT%H:%M:%S")
+        return dt
 
     @staticmethod
     def _is_duplicate(s1, s2, threshold):
@@ -180,7 +182,7 @@ class Log:
         for i in range(0, len(items)):
             for j in range(i + 1, len(items)):
 
-                if Log._is_duplicate(items[i].message, items[j].message, DUPLICATE_THRESHOLD):
+                if Log._is_duplicate(items[i].message.lower(), items[j].message.lower(), DUPLICATE_THRESHOLD):
                     if items[j] in tmp_set:
                         tmp_set.remove(items[j])
 
@@ -227,10 +229,10 @@ class ElasticSearchLoader:
         }
 
         url = self._server_url + 'logs-*/_search'
-        print(">> url:{}".format(url))
+        # print(">> url:{}".format(url))
         request = urllib.request.Request(url, 'GET', headers)
         response = urllib.request.urlopen(request, request_body, timeout=10000).read().decode('utf-8')
-        print("<< data:{}".format(str(response)))
+        # print("<< data:{}".format(str(response)))
         return json.loads(response)['hits']['hits']
 
     @staticmethod
@@ -245,7 +247,15 @@ class ElasticSearchLoader:
             stacktrace = information.get('stacktrace', '')
             timestamp = information['@timestamp']
             log = Log(application, severity, message, stacktrace, timestamp)
-            result.append(log)
+
+            is_important_msg = True
+            for stop_word in STOP_WORDS:
+                if stop_word in message:
+                    is_important_msg = False
+                    break
+
+            if is_important_msg:
+                result.append(log)
 
         return result
 
@@ -265,6 +275,9 @@ class ElasticSearchLoader:
 
             for log_list in result.values():
                 Log.remove_duplicates(log_list)
+
+            print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'))
+            break
 
         return result
 
