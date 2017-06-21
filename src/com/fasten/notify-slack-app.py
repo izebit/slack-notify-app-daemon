@@ -20,53 +20,53 @@ DUPLICATE_THRESHOLD = 10
 
 RECIPIENTS = {
     # RU Call
-    'ivr-srv': None,
+    'ivr-srv': '@shushkov',
     # RU Operator
-    'operator-gtw': None,
-    'operator-srv': None,
+    'operator-gtw': '@minko_roman',
+    'operator-srv': '@minko_roman',
     # RU Order Process
-    'orderproc-srv': None,
+    'orderproc-srv': '@bayandin_dmitriy',
     # Notifications
-    'notify-srv': None,
-    'push-gtw': None,
-    'call-gtw': None,
-    'public-api': None,
+    'notify-srv': '@kazak_aliaksandr',
+    'push-gtw': '@kazak_aliaksandr',
+    'call-gtw': '@kazak_aliaksandr',
+    'public-api': '@kazak_aliaksandr',
     # Driver Tracking
-    'tracking-srv': '@konovalov_artem',
+    'tracking-srv': '@budnikau_aliaksandr',
     # Payment
-    'billing-srv': None,
-    'rider-srv': None,
+    'billing-srv': '@susla_mikalaj',
+    'rider-srv': '@susla_mikalaj',
     # Driver guarantee
-    'guarantee-srv': None,
+    'guarantee-srv': '@susla_mikalaj',
     # Driver experience
-    'driver-srv': None,
-    'driver-gtw': None,
+    'driver-srv': '@filipchenko_vladimir',
+    'driver-gtw': '@filipchenko_vladimir',
     # Promotion
-    'promo-srv': '@konovalov_artem',
+    'promo-srv': '@dolzhenok_sergey, @konovalov_artem',
     # Tolls
-    'geo-srv': '@konovalov_artem',
+    'geo-srv': '@dolzhenok_sergey',
     # Order Process
-    'order-srv': '@konovalov_artem',
-    'tick-srv': '@konovalov_artem',
-    'tariff-srv': '@konovalov_artem',
+    'order-srv': '@dolzhenok_sergey, @konovalov_artem, @chipunov_konstantin, @kuyunko_konstantin',
+    'tick-srv': '@dolzhenok_sergey, @konovalov_artem, @chipunov_konstantin, @kuyunko_konstantin',
+    'tariff-srv': '@@dolzhenok_sergey, @konovalov_artem, @susla_mikalaj',
     # Backoffice
-    'manager-srv': None,
-    'manager-gtw': None,
+    'manager-srv': '@kazak_aliaksandr',
+    'manager-gtw': '@kazak_aliaksandr',
     # Driver Shift
-    'shift-srv': '@konovalov_artem',
-    'priority-srv': '@konovalov_artem',
+    'shift-srv': '@dolzhenok_sergey, @kazak_aliaksandr',
+    'priority-srv': '@dolzhenok_sergey, @kazak_aliaksandr',
     # Statistics
-    'stat-srv': None,
+    'stat-srv': '@dolzhenok_sergey, @konovalov_artem',
     # Heatmap
-    'predict-srv': None,
-    'heatmap-srv': None,
-    'teller-srv': None,
+    'predict-srv': '@chipunov_konstantin, @saidov_timur',
+    'heatmap-srv': '@chipunov_konstantin, @saidov_timur',
+    'teller-srv': '@chipunov_konstantin, @saidov_timur',
     # Geospatial
-    'polygon-srv': None,
-    'hexagon-srv': None,
+    'polygon-srv': '@chipunov_konstantin',
+    'hexagon-srv': '@chipunov_konstantin',
     # Rider Experience
-    'customer-srv': None,
-    'customer-gtw': None,
+    'customer-srv': '@saidov_timur',
+    'customer-gtw': '@saidov_timur',
 }
 
 
@@ -117,7 +117,7 @@ class SlackSender:
             print(app_name)
             for log in logs:
                 url = 'https://slack.com/api/files.upload'
-                recipient = RECIPIENTS.get(app_name.lower(), "anonymous")
+                recipients = RECIPIENTS.get(app_name.lower(), "anonymous")
 
                 request_params = {
                     'channels': self._channel_name,
@@ -126,10 +126,10 @@ class SlackSender:
                     'title': "{}-{}".format(log.application, log.severity),
                     'filename': '{}.log'.format(app_name),
                     'content': '{}\n{}'.format(log.message, log.stacktrace),
-                    'initial_comment': 'application: {} \nmember:{}\ndate: {}'.format(log.application,
-                                                                                      recipient,
-                                                                                      log.date.strftime(
-                                                                                          "%Y-%m-%d %H:%M"))
+                    'initial_comment': 'application: {} \nmembers: {}\ndate: {}'.format(log.application,
+                                                                                        recipients,
+                                                                                        log.date.strftime(
+                                                                                            "%Y-%m-%d %H:%M"))
                 }
 
                 request = Request(url, urlencode(request_params).encode())
