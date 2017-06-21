@@ -291,7 +291,7 @@ class Watcher:
         self._sender = consumer
 
     def watcher(self):
-        self._sender.send_info("i started work")
+        self._sender.send_info("i started to work")
 
         while True:
             logs = {}
