@@ -13,10 +13,11 @@ from urllib.request import Request, urlopen
 __author__ = 'Artem Konovalov <a.konovalov@fasten.com>'
 __version__ = '1.0'
 
-STOP_WORDS = ["Can't authenticate by token"]
+STOP_WORDS = ["Can't authenticate by token", 'Connection reset by peer', 'AuthenticationException']
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
+DELAY_SECONDS = 1200
 
 RECIPIENTS = {
     # RU Call
@@ -198,7 +199,7 @@ class ElasticSearchLoader:
         self._last_update_time = datetime.datetime.today()
         self._server_url = server_url
 
-    def _load_json(self, limit=100):
+    def _load_json(self, limit=20):
         body = {
             "query": {
                 "bool": {
@@ -229,10 +230,10 @@ class ElasticSearchLoader:
         }
 
         url = self._server_url + 'logs-*/_search'
-        # print(">> url:{}".format(url))
+        print(">> url:{}".format(url))
         request = urllib.request.Request(url, 'GET', headers)
         response = urllib.request.urlopen(request, request_body, timeout=10000).read().decode('utf-8')
-        # print("<< data:{}".format(str(response)))
+        print("<< data:{}".format(str(response)))
         return json.loads(response)['hits']['hits']
 
     @staticmethod
@@ -250,7 +251,8 @@ class ElasticSearchLoader:
 
             is_important_msg = True
             for stop_word in STOP_WORDS:
-                if stop_word in message:
+                if (message is not None and stop_word in message) or \
+                        (stacktrace is not None and stop_word in stacktrace):
                     is_important_msg = False
                     break
 
@@ -277,7 +279,6 @@ class ElasticSearchLoader:
                 Log.remove_duplicates(log_list)
 
             print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'))
-            break
 
         return result
 
@@ -307,7 +308,7 @@ class Watcher:
                 print('error happened while sending notifies about errors: {}'.format(e))
                 self._sender.send_error('error happened while sending notifies about errors: {}'.format(e))
 
-            time.sleep(600)
+            time.sleep(DELAY_SECONDS)
 
 
 if __name__ == '__main__':
