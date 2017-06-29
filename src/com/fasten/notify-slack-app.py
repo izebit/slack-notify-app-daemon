@@ -156,7 +156,6 @@ class Log:
     def _parse_timestamp(dt_str):
         # remove Z from end of string
         dt_str = dt_str[0:-1]
-        print(dt_str)
         tokens = dt_str.split(".")
         dt = datetime.datetime.strptime(tokens[0], "%Y-%m-%dT%H:%M:%S")
         return dt
@@ -278,10 +277,10 @@ class ElasticSearchLoader:
                 result.get(log.application).append(log)
                 self._last_update_time = max(log.date, self._last_update_time)
 
-            for log_list in result.values():
-                Log.remove_duplicates(log_list)
-
             print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+        for log_list in result.values():
+            Log.remove_duplicates(log_list)
 
         return result
 
