@@ -17,6 +17,7 @@ STOP_WORDS = ["Can't authenticate by token", 'Connection reset by peer', 'Authen
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
+MAX_SIZE_THRESHOLD = 50
 DELAY_SECONDS = 600
 
 RECIPIENTS = {
@@ -264,9 +265,12 @@ class ElasticSearchLoader:
         return result
 
     def load(self):
+        print("send request: {}".format(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')))
         result = {}
 
-        while True:
+        count = 0
+        while count < MAX_SIZE_THRESHOLD:
+
             data = self._load_json()
             if len(data) == 0:
                 break
@@ -276,6 +280,7 @@ class ElasticSearchLoader:
                 result.setdefault(log.application, [])
                 result.get(log.application).append(log)
                 self._last_update_time = max(log.date, self._last_update_time)
+                count += 1
 
             print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'))
 
