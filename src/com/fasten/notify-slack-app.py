@@ -17,7 +17,7 @@ STOP_WORDS = ["Can't authenticate by token", 'Connection reset by peer', 'Authen
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
-DELAY_SECONDS = 1200
+DELAY_SECONDS = 600
 
 RECIPIENTS = {
     # RU Call
@@ -154,6 +154,9 @@ class Log:
 
     @staticmethod
     def _parse_timestamp(dt_str):
+        # remove Z from end of string
+        dt_str = dt_str[0:-1]
+        print(dt_str)
         tokens = dt_str.split(".")
         dt = datetime.datetime.strptime(tokens[0], "%Y-%m-%dT%H:%M:%S")
         return dt
@@ -199,7 +202,7 @@ class ElasticSearchLoader:
         self._last_update_time = datetime.datetime.today()
         self._server_url = server_url
 
-    def _load_json(self, limit=20):
+    def _load_json(self, limit=100):
         body = {
             "query": {
                 "bool": {
