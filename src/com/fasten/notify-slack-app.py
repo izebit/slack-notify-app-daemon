@@ -235,7 +235,6 @@ class ElasticSearchLoader:
 
     def __init__(self, server_url):
         self._last_update_time = datetime.datetime.today()
-        self._last_update_time = datetime.datetime(2017, 6, 29, 0, 0)
         self._server_url = server_url
 
     def _load_json(self, limit=100):
