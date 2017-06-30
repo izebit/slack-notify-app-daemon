@@ -17,7 +17,6 @@ STOP_WORDS = ["Can't authenticate by token", 'Connection reset by peer', 'Authen
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
-MAX_SIZE_THRESHOLD = 50
 DELAY_SECONDS = 600
 
 RECIPIENTS = {
@@ -110,7 +109,7 @@ class SlackSender:
         self._send_msg("Error:", text, "There is something wrong with me :warning:", 'danger')
 
     def send_data(self, items):
-        print(">> sending data. size:{}".format(len(items)))
+        print(">> size:{}".format(len(items)))
 
         if len(items) == 0:
             return
@@ -137,6 +136,7 @@ class SlackSender:
                 request = Request(url, urlencode(request_params).encode())
                 response = urlopen(request).read().decode()
                 print(response)
+        pass
 
 
 class Log:
@@ -153,18 +153,41 @@ class Log:
         self.stacktrace = '' if stacktrace is None else stacktrace
         self.date = Log._parse_timestamp(timestamp)
 
+    def __eq__(self, other):
+        if not isinstance(other, Log.__class__):
+            return False
+
+        return (self.application == other.application) and \
+               (self.severity == other.severity) and \
+               (self.date == other.date) and \
+               (self.message == self.message) and \
+               (self.stacktrace == self.stacktrace)
+
+    def __hash__(self):
+        return hash(self.severity) + \
+               hash(self.application) + \
+               hash(self.message) + \
+               hash(self.date) + \
+               hash(self.stacktrace)
+
     @staticmethod
     def _parse_timestamp(dt_str):
-        # remove Z from end of string
-        dt_str = dt_str[0:-1]
-        tokens = dt_str.split(".")
-        dt = datetime.datetime.strptime(tokens[0], "%Y-%m-%dT%H:%M:%S")
+        try:
+            dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+        except Exception:
+            try:
+                dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ")
+            except Exception:
+                return datetime.datetime.today()
         return dt
 
     @staticmethod
     def _is_duplicate(s1, s2, threshold):
         if s1 is None or s2 is None:
             return False
+
+        s1 = s1.lower()
+        s2 = s2.lower()
 
         min_len = min(len(s1), len(s2))
         result = 0
@@ -181,14 +204,26 @@ class Log:
         return max(result, count) > threshold
 
     @staticmethod
-    def remove_duplicates(items):
+    def _is_stop_word(log):
+        for stop_word in STOP_WORDS:
+            if (log.message is not None and stop_word in log.message) or \
+                    (log.stacktrace is not None and stop_word in log.stacktrace):
+                return True
+
+        return False
+
+    @staticmethod
+    def remove_useless_logs(items):
         tmp_set = set(items)
         for i in range(0, len(items)):
             for j in range(i + 1, len(items)):
 
-                if Log._is_duplicate(items[i].message.lower(), items[j].message.lower(), DUPLICATE_THRESHOLD):
-                    if items[j] in tmp_set:
-                        tmp_set.remove(items[j])
+                if Log._is_duplicate(items[i].message, items[j].message, DUPLICATE_THRESHOLD) and items[j] in tmp_set:
+                    tmp_set.remove(items[j])
+
+        for log in items:
+            if Log._is_stop_word(log) and log in tmp_set:
+                tmp_set.remove(log)
 
         items.clear()
         items.extend(tmp_set)
@@ -200,6 +235,7 @@ class ElasticSearchLoader:
 
     def __init__(self, server_url):
         self._last_update_time = datetime.datetime.today()
+        self._last_update_time = datetime.datetime(2017, 6, 29, 0, 0)
         self._server_url = server_url
 
     def _load_json(self, limit=100):
@@ -212,8 +248,8 @@ class ElasticSearchLoader:
                     "must": {
                         "range": {
                             "@timestamp": {
-                                "gt": self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
-                                "format": "yyyy-MM-dd HH:mm:ss"
+                                "gt": self._last_update_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                "format": "yyyy-MM-dd HH:mm:ss.SSSSSS"
                             }
                         }
                     }
@@ -233,10 +269,9 @@ class ElasticSearchLoader:
         }
 
         url = self._server_url + 'logs-*/_search'
-        print(">> url:{}".format(url))
         request = urllib.request.Request(url, 'GET', headers)
         response = urllib.request.urlopen(request, request_body, timeout=10000).read().decode('utf-8')
-        print("<< data:{}".format(str(response)))
+        print("<< {}".format(str(response)))
         return json.loads(response)['hits']['hits']
 
     @staticmethod
@@ -251,25 +286,15 @@ class ElasticSearchLoader:
             stacktrace = information.get('stacktrace', '')
             timestamp = information['@timestamp']
             log = Log(application, severity, message, stacktrace, timestamp)
-
-            is_important_msg = True
-            for stop_word in STOP_WORDS:
-                if (message is not None and stop_word in message) or \
-                        (stacktrace is not None and stop_word in stacktrace):
-                    is_important_msg = False
-                    break
-
-            if is_important_msg:
-                result.append(log)
+            result.append(log)
 
         return result
 
     def load(self):
-        print("send request: {}".format(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')))
+        print("send : {}".format(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S.%f')))
         result = {}
 
-        count = 0
-        while count < MAX_SIZE_THRESHOLD:
+        while True:
 
             data = self._load_json()
             if len(data) == 0:
@@ -280,12 +305,11 @@ class ElasticSearchLoader:
                 result.setdefault(log.application, [])
                 result.get(log.application).append(log)
                 self._last_update_time = max(log.date, self._last_update_time)
-                count += 1
 
-            print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S'))
+            print(self._last_update_time.strftime('%Y-%m-%d %H:%M:%S.%f'))
 
         for log_list in result.values():
-            Log.remove_duplicates(log_list)
+            Log.remove_useless_logs(log_list)
 
         return result
 
