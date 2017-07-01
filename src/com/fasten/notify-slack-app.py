@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 __author__ = 'Artem Konovalov <a.konovalov@fasten.com>'
 __version__ = '1.0'
 
-STOP_WORDS = ["Can't authenticate by token", 'Connection reset by peer', 'AuthenticationException']
+STOP_WORDS = ['AuthenticationException']
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
@@ -136,7 +136,6 @@ class SlackSender:
                 request = Request(url, urlencode(request_params).encode())
                 response = urlopen(request).read().decode()
                 print(response)
-        pass
 
 
 class Log:
@@ -221,10 +220,6 @@ class Log:
                 if Log._is_duplicate(items[i].message, items[j].message, DUPLICATE_THRESHOLD) and items[j] in tmp_set:
                     tmp_set.remove(items[j])
 
-        for log in items:
-            if Log._is_stop_word(log) and log in tmp_set:
-                tmp_set.remove(log)
-
         items.clear()
         items.extend(tmp_set)
 
@@ -236,6 +231,15 @@ class ElasticSearchLoader:
     def __init__(self, server_url):
         self._last_update_time = datetime.datetime.today()
         self._server_url = server_url
+
+    @staticmethod
+    def _get_query_for_stop_word():
+        query = ""
+
+        for word in STOP_WORDS:
+            query += " *" + word + "* "
+
+        return query
 
     def _load_json(self, limit=100):
         body = {
@@ -250,6 +254,13 @@ class ElasticSearchLoader:
                                 "gt": self._last_update_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
                                 "format": "yyyy-MM-dd HH:mm:ss.SSSSSS"
                             }
+                        }
+                    },
+                    "must_not": {
+                        "query_string": {
+                            "default_field": "_all",
+                            "query": ElasticSearchLoader._get_query_for_stop_word(),
+                            "analyze_wildcard": True
                         }
                     }
                 }
