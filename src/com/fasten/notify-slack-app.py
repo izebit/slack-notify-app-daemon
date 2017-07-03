@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 __author__ = 'Artem Konovalov <a.konovalov@fasten.com>'
 __version__ = '1.0'
 
-STOP_WORDS = ['AuthenticationException']
+STOP_WORDS = ['AuthenticationException', 'SocketException']
 
 SEVERITY_LIST = ['error']
 DUPLICATE_THRESHOLD = 10
@@ -201,15 +201,6 @@ class Log:
                 count = 0
 
         return max(result, count) > threshold
-
-    @staticmethod
-    def _is_stop_word(log):
-        for stop_word in STOP_WORDS:
-            if (log.message is not None and stop_word in log.message) or \
-                    (log.stacktrace is not None and stop_word in log.stacktrace):
-                return True
-
-        return False
 
     @staticmethod
     def remove_useless_logs(items):
