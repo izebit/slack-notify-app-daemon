@@ -40,14 +40,14 @@ RECIPIENTS = {
     # Driver guarantee
     'guarantee-srv': '@susla_mikalaj',
     # Driver experience
-    'driver-srv': '@filipchenko_vladimir',
-    'driver-gtw': '@filipchenko_vladimir',
+    'driver-srv': '@davydau_mikita',
+    'driver-gtw': '@davydau_mikita',
     # Promotion
     'promo-srv': '@dolzhenok_sergey, @konovalov_artem',
     # Tolls
     'geo-srv': '@dolzhenok_sergey',
     # Order Process
-    'order-srv': '@dolzhenok_sergey, @konovalov_artem, @chipunov_konstantin, @kuyunko_konstantin',
+    'order-srv': '@dolzhenok_sergey, @konovalov_artem, @kuyunko_konstantin',
     'tick-srv': '@dolzhenok_sergey, @konovalov_artem, @chipunov_konstantin, @kuyunko_konstantin',
     'tariff-srv': '@@dolzhenok_sergey, @konovalov_artem, @susla_mikalaj',
     # Backoffice
