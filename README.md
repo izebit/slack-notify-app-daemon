@@ -1,4 +1,4 @@
-# Slack notify app daemon  
+# Slack notify daemon  
 :rocket:
 
 ### What is it for?  
