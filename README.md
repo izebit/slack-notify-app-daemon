@@ -2,13 +2,13 @@
 :rocket:
 
 ### What is it for?  
-It is daemon for notification to slack users about errors, which has contained on elastic search server.
+It is a daemon for notification slack users about errors, which has contained on elastic search server.
 
 
 ### How can you run this app?  
 There are only two steps:  
 - you should have python with version 3 on your computer
-- execute below command:
+- execute below the command:
 
 ```bash
 python notify-slack-app.py --elastic-search-domain=<elastic_search_address> \
